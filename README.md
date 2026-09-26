@@ -1,6 +1,6 @@
 <div align="center">
 
-# .GRAMO — Ponto Eletrônico Corporativo (REP-P)
+# Ponto Eletrônico REP-P — Controle de Jornada Multiempresa
 
 **SaaS multiempresa de controle de jornada em conformidade com a Portaria MTP 671/2021**
 
@@ -15,10 +15,10 @@
 
 ---
 
-Sistema de ponto eletrônico desenvolvido para a **GRAMO Engenharia**, pensado para equipes de campo
+Sistema de ponto eletrônico multiempresa (projeto autoral), pensado para equipes de campo
 distribuídas em várias obras. O colaborador bate o ponto pelo celular com **reconhecimento facial e
 geolocalização**, mesmo sem internet; o RH trata exceções, colhe assinaturas e gera os arquivos exigidos
-pela fiscalização do trabalho. Software em processo de registro no **INPI**.
+pela fiscalização do trabalho.
 
 ## Destaques
 
@@ -269,4 +269,4 @@ trilha de auditoria. Escopo por filial aplicado ao Gestor.
 
 ---
 
-<sub>Desenvolvido por <a href="https://github.com/luizfernandoantonio345-webs">Luiz Fernando</a> para a GRAMO Engenharia.</sub>
+<sub>Desenvolvido por <a href="https://github.com/luizfernandoantonio345-webs">Luiz Fernando</a>.</sub>
