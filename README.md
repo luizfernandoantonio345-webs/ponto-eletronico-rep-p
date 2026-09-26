@@ -1,58 +1,92 @@
-# REP-P — Sistema de Ponto Eletrônico Corporativo
+<div align="center">
 
-Plataforma **multi-tenant (SaaS)** de ponto eletrônico enquadrada como **REP-P**
-(Portaria MTP 671/2021): registro de ponto por reconhecimento facial +
-geolocalização (REGAP), folha de ponto, assinatura virtual e painel
-administrativo com trilha de auditoria.
+# .GRAMO — Ponto Eletrônico Corporativo (REP-P)
 
-> **Roadmap 0–6 completo + backlog da especificação 100% coberto** (Telas 1–4,
-> ADM 0–11, compliance 671, plataforma SaaS, banco de horas). Ver
-> [`RELATORIO.md`](./RELATORIO.md) (estado, decisões, conformidade) e
-> [`SECURITY-REVIEW.md`](./SECURITY-REVIEW.md) (auditoria de segurança).
+**SaaS multiempresa de controle de jornada em conformidade com a Portaria MTP 671/2021**
 
-## Princípios inegociáveis (valem em qualquer fase)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![NestJS](https://img.shields.io/badge/NestJS-E0234E?logo=nestjs&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL_+_RLS-4169E1?logo=postgresql&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?logo=prisma&logoColor=white)
+![React](https://img.shields.io/badge/React_PWA-20232A?logo=react&logoColor=61DAFB)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
 
-1. **O botão de bater ponto nunca bloqueia** — fora da REGAP/horário o registro é
-   aceito e marcado como _pendente de validação_. Bloquear pode ser fraude de jornada.
-2. **Registro de ponto é imutável** — correção = novo registro de ajuste
-   vinculado, com autor/motivo/timestamp. Append-only por contrato e por permissão
-   de banco.
-3. **NSR sequencial por estabelecimento, sem furos** — atribuído no servidor.
-4. **Hora oficial do servidor** quando online; hora do device só offline (marcada).
-5. **Biometria é dado sensível (LGPD)** — consentimento separado, AES-256 em repouso.
-6. **Guarda de 5 anos** — desligar funcionário nunca apaga histórico (soft delete).
+</div>
+
+---
+
+Sistema de ponto eletrônico desenvolvido para a **GRAMO Engenharia**, pensado para equipes de campo
+distribuídas em várias obras. O colaborador bate o ponto pelo celular com **reconhecimento facial e
+geolocalização**, mesmo sem internet; o RH trata exceções, colhe assinaturas e gera os arquivos exigidos
+pela fiscalização do trabalho. Software em processo de registro no **INPI**.
+
+## Destaques
+
+| | |
+|---|---|
+| **Conformidade legal** | Enquadrado como REP-P (Portaria 671/2021): NSR sequencial sem furos, geração de **AFD e AEJ**, comprovante **PAdES**, guarda de 5 anos |
+| **Registro imutável** | Marcação é append-only com hash SHA-256; correção vira novo registro de ajuste com autor e motivo — nunca sobrescreve |
+| **Multi-tenant no banco** | Isolamento por **Row Level Security** do PostgreSQL, API conectando com role sem superusuário, JWT amarrado à empresa |
+| **Operador sem acesso a dados** | Portal da plataforma (planos, faturas, empresas) usa uma role Postgres **sem privilégio** nas tabelas operacionais |
+| **Offline-first** | Fila local em IndexedDB e sincronização idempotente por UUID; hora do servidor quando online |
+| **Assinatura digital** | Espelho de ponto assinado com SHA-256 do documento + manifesto + **assinatura Ed25519** do servidor, verificável depois |
+| **LGPD** | Biometria como dado sensível: consentimento separado e **AES-256 em repouso** para fotos e documentos |
+| **Nunca bloqueia o ponto** | Fora da área ou do horário, o registro é aceito e vai para a fila de exceções — bloquear poderia configurar fraude de jornada |
+
+## Arquitetura
+
+```
+┌─ apps/web · React + Vite (PWA) ──────────────────────────────────────────────────────────┐
+│ App do colaborador        Painel RH / Gestor          Quiosque     Portal /super         │
+│ (face + GPS, offline)     (2FA, exceções, AFD/AEJ)                                       │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+                                            │ REST /api/v1  (subdomínio → empresa)
+                                            ▼
+┌─ apps/api · NestJS ──────────────────────────────────────────────────────────────────────┐
+│ 16 módulos de domínio: pontos, assinaturas, compliance, auditoria, férias, plataforma... │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+        │ role repp_app  (RLS aplicado)              │ role repp_super  (sem dados operacionais)
+        ▼                                            ▼
+┌─ PostgreSQL · Prisma ────────────────────────────────────────────────────────────────────┐
+│ 35 modelos · Row Level Security por empresa_id · registros de ponto append-only          │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+packages/shared — validadores, enums e contratos de sincronização usados pelo front e pelo back
+```
+
+## Módulos
+
+**Colaborador:** bater ponto (face + REGAP + offline) · espelho de ponto · assinatura de documentos ·
+documentos pessoais · férias e afastamentos · contestação de marcação · comunicados
+
+**RH / Gestão:** dashboard · fila de exceções · funcionários e importação CSV · jornadas e feriados ·
+banco de horas · assinaturas em lote · exportação AFD/AEJ · pacote de fiscalização · auditoria de acessos
+e aprovações · integrações (folha / eSocial) · escopo por filial para gestores
+
+**Plataforma:** empresas, planos, faturas e uso — com 2FA próprio e isolamento de dados
 
 ## Stack
 
-| Camada   | Tecnologia                                                            |
-| -------- | --------------------------------------------------------------------- |
-| Backend  | Node.js + TypeScript + **NestJS**, REST versionada `/api/v1`, OpenAPI |
-| Banco    | **PostgreSQL** + **Prisma**, `empresa_id` + **Row Level Security**    |
-| Frontend | **React + TypeScript + Vite** como **PWA** instalável                 |
-| Offline  | IndexedDB (Dexie) + sync idempotente (UUID no client)                 |
-| Auth     | JWT + refresh, argon2, 2FA admin _(Fase 1)_                           |
-| Testes   | Vitest                                                                |
-| Infra    | Docker Compose (app + postgres)                                       |
+| Camada | Tecnologia |
+|---|---|
+| Backend | Node.js · TypeScript · NestJS · REST versionada · OpenAPI/Swagger |
+| Banco | PostgreSQL · Prisma · Row Level Security · roles separadas por função |
+| Frontend | React · TypeScript · Vite · PWA · Dexie (IndexedDB) · reconhecimento facial no navegador |
+| Segurança | JWT + refresh rotativo · Argon2id · 2FA TOTP obrigatório para admin · helmet · rate limit · Ed25519 · AES-256 |
+| Qualidade | Vitest · testes e2e contra PostgreSQL real embarcado · ESLint · Prettier · Husky · CodeQL · Dependabot |
+| Infra | Docker Compose · Caddy · scripts de backup |
 
-> **Nota de decisão:** o monorepo usa **npm workspaces** (não pnpm): o ambiente de
-> desenvolvimento bloqueia a instalação do pnpm via corepack (EPERM em
-> `Program Files`). npm workspaces entrega o mesmo resultado sem binário externo.
+## Testes
 
-## Estrutura
+Suíte com testes de unidade e **e2e contra um PostgreSQL real** (`embedded-postgres`), cobrindo o que não
+pode falhar: isolamento entre empresas via RLS, NSR sem furos sob concorrência, imutabilidade dos registros
+e a fronteira entre o portal da plataforma e os dados dos clientes.
 
-```
-rep-p/
-├─ packages/shared/     # validador de CPF, enums, contratos de sync (back + front)
-├─ apps/api/            # NestJS + Prisma
-│  └─ prisma/
-│     ├─ schema.prisma  # modelo multi-tenant, imutável, NSR, LGPD
-│     └─ sql/rls-policies.sql  # Row Level Security (isolamento no banco)
-├─ apps/web/            # PWA (app funcionário + painel admin)
-├─ docker/              # init do postgres (cria role repp_app sem superuser)
-└─ docker-compose.yml
+```bash
+npm test                       # unidade (todos os workspaces)
+npm run test:e2e -w @repp/api  # e2e: RLS + NSR + imutabilidade + boundary super
 ```
 
-## Como rodar (local)
+## Rodando localmente
 
 Pré-requisitos: Node ≥ 20. Docker (para o Postgres) opcional mas recomendado.
 
@@ -83,7 +117,14 @@ Para o RLS ser realmente aplicado, a API **não** pode conectar como superusuár
 - `repp_owner` — dona do banco, roda migrations e o DDL de RLS (`directUrl` do Prisma).
 - `repp_app` — role `NOSUPERUSER` que a API usa em runtime (`DATABASE_URL`).
 
-## Autenticação (Fase 1)
+
+> **Homologação antes do go-live:** validar os leiautes AFD/AEJ no verificador oficial gov.br e instalar um
+> certificado **ICP-Brasil** (`.p12`). Em desenvolvimento, um certificado autoassinado é gerado automaticamente.
+
+<details>
+<summary><b>Referência da API</b></summary>
+
+### Autenticação (Fase 1)
 
 Toda requisição identifica a empresa pelo subdomínio; em dev use o header
 `X-Tenant-Subdominio: <subdominio>`. Endpoints principais (prefixo `/api/v1`):
@@ -105,7 +146,7 @@ Regras aplicadas: 2FA TOTP obrigatório para admin, senhas Argon2id, lockout
 e vínculo do JWT ao tenant (token de outra empresa é rejeitado). Documentação
 interativa em `/api/docs` (Swagger).
 
-## Ponto (Fase 2)
+### Ponto (Fase 2)
 
 Endpoints do funcionário (autenticados, `/api/v1`):
 
@@ -132,7 +173,7 @@ SHA-256** por registro, ponto **imutável** (correção = ajuste; exceção em t
 à parte), foto **cifrada em repouso** (AES-256), e **offline-first** (fila Dexie +
 sync idempotente).
 
-## Funcionário e documentos (Fase 3)
+### Funcionário e documentos (Fase 3)
 
 Tela 4 (funcionário): `GET/POST /documentos` (status + upload cifrado até 10MB).
 
@@ -149,7 +190,7 @@ ADM 2 (RH Master / Gestor; Auditoria só leitura):
 | POST     | `/admin/funcionarios/importar`           | Importação CSV tudo-ou-nada                            |
 | GET      | `/admin/funcionarios/alertas/vencimento` | Documentos vencendo em 30 dias                         |
 
-## Folha e assinatura virtual (Fase 4)
+### Folha e assinatura virtual (Fase 4)
 
 Tela 2 (funcionário): `GET /assinaturas`, `GET /assinaturas/:id/visualizar`,
 `POST /assinaturas/:id/assinar` (re-autentica), `POST /assinaturas/:id/recusar`,
@@ -164,7 +205,7 @@ Cada assinatura gera registro **imutável** com **SHA-256 do documento** +
 IP/dispositivo. O comprovante reconstrói o manifesto e confere **assinatura** e
 **integridade** (re-hash do arquivo). PAdES/ICP-Brasil embarcado no PDF é a Fase 5.
 
-## Compliance Portaria 671 (Fase 5)
+### Compliance Portaria 671 (Fase 5)
 
 ADM 6 (RH Master / Auditoria): `POST /admin/exportacoes/afd` e `/aej` (gera do
 período: hash SHA-256 + assinatura Ed25519 + registro imutável), `GET
@@ -178,7 +219,7 @@ AFD+AEJ+trilha).
 > em `ASSINATURA_P12_BASE64`/`ASSINATURA_P12_SENHA` (em dev, um cert autoassinado
 > é gerado automaticamente — sem validade jurídica).
 
-## Plataforma / Super Admin (Fase 6)
+### Plataforma / Super Admin (Fase 6)
 
 Portal `/super` (opera **acima** dos tenants; isento de subdomínio):
 `POST /super/auth/login` · `/2fa/setup` · `/2fa/verify` · `/refresh`; e (com token
@@ -190,7 +231,7 @@ Super) `GET·POST /super/empresas`, `/super/empresas/:id/{suspender,ativar,uso}`
 > Bootstrap do 1º super admin via `SUPER_ADMIN_EMAIL`/`SUPER_ADMIN_SENHA`.
 > Hardening: `helmet` + rate limiting global.
 
-## Auditoria (ADM 6)
+### Auditoria (ADM 6)
 
 RH Master / Auditoria (somente leitura): `GET /admin/auditoria` (trilha de ações,
 filtrável/paginada), `GET /admin/auditoria/acessos` (login/2FA/logout),
@@ -198,14 +239,14 @@ filtrável/paginada), `GET /admin/auditoria/acessos` (login/2FA/logout),
 Autorização administrativa do **Gestor de Filial** é restrita às suas filiais
 (`AdminFilialAcesso`).
 
-## Configurações (ADM 7)
+### Configurações (ADM 7)
 
 `/admin/configuracoes/jornadas` (CRUD) e `/admin/configuracoes/feriados` (CRUD).
 A jornada (horário, tolerância, dias de escala) é atribuída ao funcionário e
 avaliada no **registro de ponto**: fora do horário/escala (e não sendo feriado)
 → `PENDENTE_HORARIO`, no **fuso da filial**. Nunca bloqueia — apenas sinaliza.
 
-## Férias/afastamentos (ADM 10) e contestação (ADM 11)
+### Férias/afastamentos (ADM 10) e contestação (ADM 11)
 
 Funcionário: `POST/GET /ferias` (solicitar/consultar), `POST/GET /contestacoes`
 (contestar marcação própria). RH: `/admin/ferias` (listar/`:id/decidir`/`calendario`)
@@ -213,7 +254,7 @@ e `/admin/contestacoes` (listar/`:id/responder`). **Férias/afastamento aprovado
 abona o dia** (não gera `PENDENTE_HORARIO`). Contestações e respostas ficam na
 trilha de auditoria. Escopo por filial aplicado ao Gestor.
 
-## Dashboard, banco de horas, comunicados, integrações (ADM 5/8/9)
+### Dashboard, banco de horas, comunicados, integrações (ADM 5/8/9)
 
 - **ADM 5** `GET /admin/dashboard` (KPIs, alertas >48h, presença 7 dias).
 - **Banco de horas** `GET /admin/pontos/banco-horas?funcionarioId&inicio&fim`
@@ -223,20 +264,9 @@ trilha de auditoria. Escopo por filial aplicado ao Gestor.
 - **ADM 9** `/admin/integracoes/chaves` (gerar/revogar; token exibido 1x) e
   `/admin/integracoes/config/:tipo` (folha/eSocial). Transmissão externa é infra.
 
-## Testes
 
-```bash
-export NODE_OPTIONS=--max-old-space-size=2048   # máquinas com pouca RAM
-npm test                       # unidade, todos os workspaces (79 testes)
-npm run test:e2e -w @repp/api  # e2e: RLS + NSR + imutabilidade + boundary super (18)
-```
+</details>
 
-> **Postgres para testes/dev sem Docker:** os e2e sobem um **PostgreSQL real
-> embarcado** (`embedded-postgres`, binário portátil). Para (re)gerar migrations
-> localmente: `node apps/api/scripts/gen-migration.mjs <nome>`.
+---
 
-## Documentos de especificação
-
-A fonte da verdade de requisitos são os três documentos de especificação
-(escopo técnico/legal, detalhamento de telas, front-end). Onde este código
-divergir, ver as decisões registradas no [`RELATORIO.md`](./RELATORIO.md).
+<sub>Desenvolvido por <a href="https://github.com/luizfernandoantonio345-webs">Luiz Fernando</a> para a GRAMO Engenharia.</sub>
