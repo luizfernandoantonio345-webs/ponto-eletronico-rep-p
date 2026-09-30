@@ -19,13 +19,13 @@
     "prepare": "husky || exit 0"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.13.0",
+    "@typescript-eslint/eslint-plugin": "^8.70.1",
     "@typescript-eslint/parser": "^8.13.0",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
     "husky": "^9.1.6",
     "lint-staged": "^15.2.10",
-    "prettier": "^3.3.3",
+    "prettier": "^3.9.9",
     "typescript": "^5.6.3"
   },
   "lint-staged": {
@@ -38,7 +38,7 @@
     ]
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1101.0"
+    "@aws-sdk/client-s3": "^3.1141.0"
   },
   "overrides": {
     "@nestjs/core": "^11.1.28",

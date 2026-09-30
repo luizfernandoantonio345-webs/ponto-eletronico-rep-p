@@ -14,7 +14,7 @@
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@repp/shared": "*",
     "@vladmandic/face-api": "^1.7.15",
-    "dexie": "^4.0.9",
+    "dexie": "^4.4.6",
     "leaflet": "^1.9.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
@@ -25,7 +25,7 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
     "fake-indexeddb": "^6.2.5",
-    "jsdom": "^30.0.1",
+    "jsdom": "^30.1.1",
     "typescript": "^5.6.3",
     "vite": "^5.4.10",
     "vite-plugin-pwa": "^0.20.5",
